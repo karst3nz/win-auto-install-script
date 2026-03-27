@@ -1,0 +1,32 @@
+{
+  "packages": [
+    {
+      "id": "7zip",
+      "name": "7-Zip"
+    },
+    {
+      "id": "discord",
+      "name": "Discord"
+    },
+    {
+      "id": "googlechrome",
+      "name": "Google Chrome"
+    },
+    {
+      "id": "notepadplusplus",
+      "name": "Notepad++"
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram Desktop"
+    },
+    {
+      "id": "vlc",
+      "name": "VLC Media Player"
+    },
+    {
+      "id": "git",
+      "name": "Git"
+    }
+  ]
+}
