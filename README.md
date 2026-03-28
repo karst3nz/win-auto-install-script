@@ -1,61 +1,64 @@
 # Windows Auto-Install Script
 
-Автоматический скрипт настройки Windows с установкой пакетов через Chocolatey.
+Automated Windows setup script with Chocolatey package installation.
 
-## Требования
+## Requirements
 
 - **Windows** 10/11
-- **PowerShell** 5.1 или выше
-- **Права администратора** (скрипт требует запуска от имени администратора)
-- **Интернет-соединение**
+- **PowerShell** 5.1 or higher
+- **Administrator privileges** (script requires running as administrator)
+- **Internet connection**
 
-## Быстрый старт
+## Quick Start
 
 ```powershell
-# Запустить от имени администратора
+# Run as administrator
 .\setup.ps1
 ```
 
-## Параметры запуска
+## Command Line Parameters
 
-| Параметр | Описание |
-|----------|----------|
-| `-NoRestart` | Не предлагать перезагрузку после завершения |
-| `-NoUpgrade` | Пропустить обновление пакетов и Chocolatey |
-| `-DryRun` | Режим симуляции без реальных изменений |
-| `-ConfigPath <путь>` | Путь к JSON-файлу конфигурации (по умолчанию: `.\packages.config.json`) |
-| `-Uninstall` | Удалить пакеты из конфигурационного файла |
-| `-ExportConfig <путь>` | Экспортировать установленные пакеты в JSON |
-| `-SkipActivation` | Пропустить активацию Windows |
+| Parameter | Description |
+|-----------|-------------|
+| `-NoRestart` | Don't prompt for restart after completion |
+| `-DryRun` | Simulation mode without actual changes |
+| `-ConfigPath <path>` | Path to JSON configuration file (default: `.\packages.config.json`) |
+| `-Uninstall` | Uninstall packages from configuration file |
+| `-ExportConfig <path>` | Export installed packages to JSON |
+| `-SkipActivation` | Skip Windows activation |
+| `-DriversPath <path>` | Path to folder with drivers/applications (.exe and .msi files) |
 
-### Примеры использования
+### Usage Examples
 
 ```powershell
-# Обычная установка
+# Standard installation
 .\setup.ps1
 
-# Режим симуляции (без реальных изменений)
+# Simulation mode (no actual changes)
 .\setup.ps1 -DryRun
 
-# Экспорт установленных пакетов
+# Export installed packages
 .\setup.ps1 -ExportConfig "my-packages.json"
 
-# Удаление пакетов из конфига
+# Uninstall packages from config
 .\setup.ps1 -Uninstall
 
-# Установка без перезагрузки и обновления
-.\setup.ps1 -NoRestart -NoUpgrade
+# Installation without restart
+.\setup.ps1 -NoRestart
 
-# Пропустить активацию Windows
+# Skip Windows activation
 .\setup.ps1 -SkipActivation
 
-# Использовать альтернативный конфиг
+# Use alternative config
 .\setup.ps1 -ConfigPath "C:\path\to\custom-config.json"
+
+# Install drivers/applications from custom folder
+.\setup.ps1 -DriversPath "D:\drivers"
 ```
 
-## Конфигурационный файл
+## Configuration File
 
-Файл `packages.config.json` содержит список пакетов для установки:
+The `packages.config.json` file contains the list of packages to install:
 
 ```json
 {
@@ -76,104 +79,113 @@
 }
 ```
 
-### Обязательные поля
+### Required Fields
 
-| Поле | Тип | Описание |
-|------|-----|----------|
-| `id` | string | Идентификатор пакета в репозитории Chocolatey |
-| `name` | string | Отображаемое имя пакета |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Package identifier in Chocolatey repository |
+| `name` | string | Display name of the package |
 
-### Поиск пакетов
+### Finding Packages
 
-Найти нужный пакет можно на [community.chocolatey.org/packages](https://community.chocolatey.org/packages)
+Find packages at [community.chocolatey.org/packages](https://community.chocolatey.org/packages)
 
-## Что делает скрипт
+## What the Script Does
 
-1. **Проверяет интернет-соединение**
-2. **Устанавливает/обновляет Chocolatey**
-3. **Устанавливает пакеты** из `packages.config.json`
-4. **Активирует Windows** (через MAS-скрипт)
-5. **Включает тёмную тему**
-6. **Добавляет пункты в контекстное меню:**
-   - "Copy as Path" — копировать путь к файлу/папке
-   - "Open in PowerShell" — открыть PowerShell в папке
-7. **Обновляет все пакеты** (можно пропустить `-NoUpgrade`)
-8. **Очищает старые логи** (старше 30 дней)
+1. **Checks internet connection**
+2. **Installs/updates Chocolatey**
+3. **Installs packages** from `packages.config.json`
+4. **Activates Windows** (via MAS script)
+5. **Enables dark theme**
+6. **Adds context menu items:**
+   - "Copy as Path" — copy file/folder path
+   - "Open in PowerShell" — open PowerShell in folder
+7. **Installs drivers/applications** from `drivers` folder (.exe and .msi files)
+8. **Cleans up old logs** (older than 30 days)
 
-## Структура проекта
+## Project Structure
 
 ```
 D:\win-auto-install-script\
-├── setup.ps1              # Главный скрипт
-├── packages.config.json   # Конфигурация пакетов
-├── README.md              # Документация
-├── setup_*.log            # Логи запусков
-└── packages.config.json   # Пример конфига
+├── setup.ps1              # Main script
+├── packages.config.json   # Package configuration
+├── README.md              # Documentation
+├── setup_*.log            # Run logs
+├── start.bat              # Batch launcher
+└── drivers\               # Folder for .exe and .msi installers
+    ├── app1.exe
+    └── app2.msi
 ```
 
-## Логи
+## Logs
 
-Каждый запуск создаёт лог-файл с меткой времени:
+Each run creates a log file with timestamp:
 ```
 setup_20260327_103240.log
 ```
 
-Логи хранятся 30 дней, затем автоматически удаляются.
+Logs are stored for 30 days, then automatically deleted.
 
-## Безопасность
+## Security
 
-### Проверка хеша скриптов
+### Script Hash Verification
 
-Скрипт загружает MAS (Microsoft Activation Script) с проверкой:
-- Скачивание с повторными попытками (до 3 раз)
-- Вычисление SHA256-хеша загруженного файла
-- Возможность верификации по известному хешу
+The script downloads MAS (Microsoft Activation Script) with verification:
+- Download with retries (up to 3 times)
+- SHA256 hash calculation of downloaded file
+- Optional verification against known hash
 
-Для установки ожидаемого хеша отредактируйте `$Configuration.MAS.ExpectedHash` в начале скрипта.
+To set expected hash, edit `$Configuration.MAS.ExpectedHash` at the beginning of the script.
 
-### Откат изменений
+### Rollback Support
 
-Скрипт поддерживает откат:
-- Удаление установленных пакетов при ошибке
-- Восстановление темы реестра
+Script supports rollback:
+- Uninstall packages on error
+- Restore registry theme settings
 
-### Подпись скрипта
+### Script Signing
 
-Для производственного использования рекомендуется подписать скрипт:
+For production use, signing the script is recommended:
 
 ```powershell
-# Создать самоподписанный сертификат
+# Create self-signed certificate
 $cert = New-SelfSignedCertificate -DnsName "WinAutoInstall" -CertStoreLocation "Cert:\CurrentUser\My"
 
-# Подписать скрипт
+# Sign the script
 Set-AuthenticodeSignature -FilePath ".\setup.ps1" -Certificate $cert
 ```
 
-## Устранение проблем
+## Troubleshooting
 
-### Ошибка "Script execution is disabled"
+### Error: "Script execution is disabled"
 
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-### Ошибка установки пакета
+### Package Installation Error
 
-1. Проверьте название пакета на community.chocolatey.org
-2. Попробуйте установить вручную: `choco install <package-id>`
-3. Проверьте лог `setup_*.log`
+1. Check package name at community.chocolatey.org
+2. Try manual installation: `choco install <package-id>`
+3. Check log file `setup_*.log`
 
-### Ошибка активации Windows
+### Windows Activation Error
 
-- Убедитесь, что есть интернет-соединение
-- Попробуйте с `-SkipActivation` и активируйте вручную
-- Проверьте [MAS GitHub](https://github.com/massgrave/MAS)
+- Ensure internet connection is available
+- Try with `-SkipActivation` and activate manually
+- Check [MAS GitHub](https://github.com/massgrave/MAS)
 
-## Вклад в проект
+### Drivers/Applications Installation
 
-### Добавление пакетов
+- Place `.exe` or `.msi` installers in the `drivers` folder
+- For `.exe` files, script tries common silent install arguments
+- For `.msi` files, script uses `msiexec /quiet /norestart`
 
-Отредактируйте `packages.config.json`:
+## Contributing
+
+### Adding Packages
+
+Edit `packages.config.json`:
 
 ```json
 {
@@ -186,18 +198,18 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 }
 ```
 
-### Сообщение об ошибке
+### Reporting Issues
 
-Приложите:
-1. Версию PowerShell: `$PSVersionTable.PSVersion`
-2. Лог-файл `setup_*.log`
-3. Описание проблемы
+Please include:
+1. PowerShell version: `$PSVersionTable.PSVersion`
+2. Log file `setup_*.log`
+3. Problem description
 
-## Лицензия
+## License
 
-MIT License — свободное использование и модификация.
+MIT License — free use and modification.
 
-## Ссылки
+## Links
 
 - [Chocolatey](https://chocolatey.org/)
 - [MAS (Microsoft Activation Script)](https://github.com/massgrave/MAS)

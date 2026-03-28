@@ -3,49 +3,49 @@
 
 <#
 .SYNOPSIS
-    Автоматическая настройка Windows с установкой пакетов через Chocolatey.
+    Automated Windows setup with Chocolatey package installation.
 
 .DESCRIPTION
-    Скрипт устанавливает Chocolatey, пакеты из конфигурационного файла,
-    активирует Windows, применяет тёмную тему и добавляет полезные пункты
-    в контекстное меню проводника.
+    Script installs Chocolatey, packages from configuration file,
+    activates Windows, applies dark theme and adds useful items
+    to Windows Explorer context menu.
 
 .PARAMETER NoRestart
-    Пропустить перезагрузку после завершения.
+    Skip restart after completion.
 
 .PARAMETER DryRun
-    Запуск без реальных изменений (только логирование).
+    Run without actual changes (logging only).
 
 .PARAMETER ConfigPath
-    Путь к JSON-файлу с конфигурацией пакетов.
+    Path to JSON file with package configuration.
 
 .PARAMETER Uninstall
-    Удалить пакеты, указанные в конфигурационном файле.
+    Uninstall packages specified in configuration file.
 
 .PARAMETER ExportConfig
-    Экспортировать список установленных пакетов в JSON-файл.
+    Export list of installed packages to JSON file.
 
 .PARAMETER SkipActivation
-    Пропустить активацию Windows.
+    Skip Windows activation.
 
 .PARAMETER DriversPath
-    Путь к папке с драйверами/приложениями (.exe файлы).
+    Path to folder with drivers/applications (.exe and .msi files).
 
 .EXAMPLE
     .\setup.ps1
-    Запустить полную установку.
+    Run full installation.
 
 .EXAMPLE
     .\setup.ps1 -DryRun
-    Запустить в режиме симуляции.
+    Run in simulation mode.
 
 .EXAMPLE
     .\setup.ps1 -ExportConfig "installed.json"
-    Экспортировать установленные пакеты.
+    Export installed packages.
 
 .EXAMPLE
     .\setup.ps1 -Uninstall
-    Удалить пакеты из конфига.
+    Uninstall packages from config.
 #>
 
 [CmdletBinding()]
@@ -70,7 +70,7 @@ $Configuration = @{
     MAS = @{
         Url             = "https://raw.githubusercontent.com/massgrave/MAS/master/MAS.ps1"
         FallbackUrl     = "https://dev.azure.com/massgrave/Microsoft-Activation-Scripts/_apis/git/repositories/Microsoft-Activation-Scripts/items?path=/MAS/All-In-One-Version-KL/MAS_AIO.cmd&download=true"
-        ExpectedHash    = $null  # Установить актуальный хеш после проверки
+        ExpectedHash    = $null  # Set actual hash after verification
         MaxRetries      = 3
     }
     Network = @{
@@ -103,7 +103,7 @@ function Write-Log {
     try {
         Add-Content -Path $Script:LogFile -Value $logEntry -Force -ErrorAction SilentlyContinue
     } catch {}
-    
+
     switch ($Level) {
         "ERROR"   { Write-Host $Message -ForegroundColor Red }
         "SUCCESS" { Write-Host $Message -ForegroundColor Green }
@@ -146,7 +146,7 @@ function Invoke-Rollback {
 function Test-ConfigValid {
     <#
     .SYNOPSIS
-        Проверяет валидность JSON-конфигурации пакетов.
+        Validates JSON package configuration.
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -157,7 +157,7 @@ function Test-ConfigValid {
         $jsonContent = Get-Content -Path $ConfigPath -Raw -ErrorAction Stop
         $config = $jsonContent | ConvertFrom-Json -ErrorAction Stop
 
-        # Проверка структуры
+        # Structure validation
         if (-not $config.psobject.Properties.Name -contains "packages") {
             Write-Log "    Config missing 'packages' property" "ERROR"
             return $false
@@ -168,7 +168,7 @@ function Test-ConfigValid {
             return $false
         }
 
-        # Проверка каждого пакета
+        # Validate each package
         $index = 0
         foreach ($pkg in $config.packages) {
             if (-not ($pkg.psobject.Properties.Name -contains "id")) {
@@ -199,7 +199,7 @@ function Test-ConfigValid {
 function Get-PackagesFromConfig {
     <#
     .SYNOPSIS
-        Загружает пакеты из валидированного JSON-конфига.
+        Loads packages from validated JSON config.
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -216,17 +216,17 @@ function Get-PackagesFromConfig {
 function Set-RegistryKey {
     <#
     .SYNOPSIS
-        Универсальная функция для создания ключей реестра и установки значений.
+        Universal function for creating registry keys and setting values.
     .PARAMETER Path
-        Путь к ключу реестра.
+        Path to registry key.
     .PARAMETER Name
-        Имя параметра.
+        Parameter name.
     .PARAMETER Value
-        Значение параметра.
+        Parameter value.
     .PARAMETER Type
-        Тип параметра реестра (по умолчанию String).
+        Registry value type (default: String).
     .PARAMETER CreateSubKey
-        Имя подключа для создания (обычно "command").
+        Subkey name to create (usually "command").
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -241,19 +241,19 @@ function Set-RegistryKey {
     )
 
     try {
-        # Создаём подключ если указан
+        # Create subkey if specified
         if ($CreateSubKey) {
             $key = New-Item -Path "$Path\$CreateSubKey" -Force -ErrorAction Stop
             $targetPath = $key.PSPath
         } else {
             $targetPath = $Path
-            # Убеждаемся что ключ существует
+            # Ensure key exists
             if (-not (Test-Path $Path)) {
                 New-Item -Path $Path -Force -ErrorAction Stop | Out-Null
             }
         }
 
-        # Устанавливаем значение
+        # Set value
         Set-ItemProperty -Path $targetPath -Name $Name -Value $Value -Type $Type -Force -ErrorAction Stop
         return $true
     } catch {
@@ -265,7 +265,7 @@ function Set-RegistryKey {
 function Remove-RegistryKey {
     <#
     .SYNOPSIS
-        Удаляет ключ реестра с подтверждением существования.
+        Removes registry key with existence confirmation.
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -343,14 +343,14 @@ function Get-ChocoVersion {
 function Test-PackageInstalled {
     <#
     .SYNOPSIS
-        Проверяет, установлен ли пакет через Chocolatey.
+        Checks if package is installed via Chocolatey.
     #>
     param(
         [Parameter(Mandatory = $true)]
         [string]$PackageId
     )
     try {
-        # Используем --exact для точного совпадения имени пакета
+        # Use --exact for exact package name match
         $result = choco list --local-only --exact $PackageId 2>$null
         if ($result -match "^\s*$PackageId\s") {
             return $true
@@ -365,7 +365,7 @@ function Test-PackageInstalled {
 function Install-ChocoPackage {
     <#
     .SYNOPSIS
-        Устанавливает пакет через Chocolatey с проверкой и откатом.
+        Installs package via Chocolatey with verification and rollback.
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -409,7 +409,7 @@ function Install-ChocoPackage {
             # Check for failure with detailed error analysis
             $exitCode = $LASTEXITCODE
             $hasError = $output -match "failed|error|unsuccessful|Exception"
-            
+
             if ($exitCode -ne 0 -or $hasError) {
                 $errorMsg = $output | Where-Object { $_ -match "ERROR|Exception|failed" } | Select-Object -First 3
                 throw "Chocolatey installation failed for $Name. Exit code: $exitCode. Errors: $($errorMsg -join '; ')"
@@ -447,7 +447,7 @@ function Install-ChocoPackage {
 function Install-Chocolatey {
     <#
     .SYNOPSIS
-        Устанавливает или проверяет наличие Chocolatey.
+        Installs or checks for Chocolatey presence.
     #>
     Write-Step "Checking / installing Chocolatey..."
 
@@ -503,9 +503,9 @@ function Install-Chocolatey {
 function Invoke-WindowsActivation {
     <#
     .SYNOPSIS
-        Активирует Windows с помощью скрипта MAS.
+        Activates Windows using MAS script.
     .NOTES
-        Требует проверки хеша для безопасности.
+        Requires hash verification for security.
     #>
     Write-Step "Activating Windows..."
 
@@ -616,7 +616,7 @@ function Set-DarkTheme {
 function Add-CopyAsPathContextMenu {
     <#
     .SYNOPSIS
-        Добавляет пункт 'Copy as Path' в контекстное меню.
+        Adds 'Copy as Path' item to context menu.
     #>
     Write-Step "Adding 'Copy as Path' to context menu..."
 
@@ -636,7 +636,7 @@ function Add-CopyAsPathContextMenu {
         )
 
         foreach ($entry in $registryEntries) {
-            # Создаём ключ и команды
+            # Create key and commands
             Set-RegistryKey -Path $entry.Path -Name $entry.Name -Value $entry.Value -CreateSubKey $entry.SubKey
             Set-RegistryKey -Path "$($entry.Path)\$($entry.SubKey)" -Name "(Default)" -Value $entry.CmdValue
             Set-RegistryKey -Path $entry.Path -Name "Icon" -Value "shell32.dll,-259"
@@ -656,7 +656,7 @@ function Add-CopyAsPathContextMenu {
 function Add-PowerShellContextMenu {
     <#
     .SYNOPSIS
-        Добавляет пункт 'Open in PowerShell' в контекстное меню.
+        Adds 'Open in PowerShell' item to context menu.
     #>
     Write-Step "Adding 'Open in PowerShell' to context menu..."
 
@@ -697,7 +697,7 @@ function Add-PowerShellContextMenu {
 function Install-FromConfig {
     <#
     .SYNOPSIS
-        Устанавливает пакеты из конфигурационного файла.
+        Installs packages from configuration file.
     #>
     param([string]$ConfigPath)
 
@@ -722,14 +722,14 @@ function Install-FromConfig {
         }
 
         Write-Step "Installing packages from config ($($packages.Count) total)..."
-        
+
         $current = 0
         foreach ($pkg in $packages) {
             $current++
             Write-Log "    Processing [$current/$($packages.Count)]: $($pkg.name) ($($pkg.id))"
             Install-ChocoPackage -Name $pkg.name -Id $pkg.id
         }
-        
+
         return $true
     } catch {
         Write-Fail "Config parsing error: $_"
@@ -743,9 +743,9 @@ function Install-FromConfig {
 function Install-FromDriversFolder {
     <#
     .SYNOPSIS
-        Устанавливает .exe и .msi файлы из папки с драйверами/приложениями.
+        Installs .exe and .msi files from drivers/applications folder.
     .PARAMETER DriversPath
-        Путь к папке с .exe и .msi файлами.
+        Path to folder with .exe and .msi files.
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -765,7 +765,7 @@ function Install-FromDriversFolder {
     }
 
     try {
-        # Ищем все .exe и .msi файлы в папке
+        # Find all .exe and .msi files in folder
         $exeFiles = Get-ChildItem -Path $DriversPath -Filter "*.exe" -File -ErrorAction SilentlyContinue
         $msiFiles = Get-ChildItem -Path $DriversPath -Filter "*.msi" -File -ErrorAction SilentlyContinue
 
@@ -776,13 +776,13 @@ function Install-FromDriversFolder {
 
         Write-Log "    Found $($exeFiles.Count) .exe file(s) and $($msiFiles.Count) .msi file(s)"
 
-        # Обработка .exe файлов
+        # Process .exe files
         foreach ($file in $exeFiles) {
             Write-Step "Installing: $($file.Name)..."
 
             try {
-                # Запускаем .exe файл в тихом режиме
-                # Пытаемся использовать распространённые ключи тихой установки
+                # Run .exe file in silent mode
+                # Try common silent install arguments
                 $installArgs = @("/S", "/s", "/quiet", "/silent", "/verysilent", "/qn")
                 $success = $false
 
@@ -796,7 +796,7 @@ function Install-FromDriversFolder {
                 }
 
                 if (-not $success) {
-                    # Если тихая установка не сработала, запускаем без аргументов
+                    # If silent install failed, run without arguments
                     Write-Log "    Silent install failed, trying without args..." "WARN"
                     $procInfo = Start-Process -FilePath $file.FullName -Wait -PassThru -ErrorAction SilentlyContinue
                     if ($procInfo.ExitCode -eq 0 -or $procInfo.ExitCode -eq 3010) {
@@ -810,14 +810,14 @@ function Install-FromDriversFolder {
             }
         }
 
-        # Обработка .msi файлов
+        # Process .msi files
         foreach ($file in $msiFiles) {
             Write-Step "Installing: $($file.Name)..."
 
             try {
-                # Запускаем .msi файл через msiexec в тихом режиме
+                # Run .msi file via msiexec in silent mode
                 $procInfo = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($file.FullName)`" /quiet /norestart" -Wait -PassThru -ErrorAction SilentlyContinue
-                
+
                 if ($procInfo.ExitCode -eq 0 -or $procInfo.ExitCode -eq 3010) {
                     Write-OK "$($file.Name) installed (exit code: $($procInfo.ExitCode))"
                 } else {
@@ -838,9 +838,9 @@ function Install-FromDriversFolder {
 function Export-InstalledPackages {
     <#
     .SYNOPSIS
-        Экспортирует список установленных Chocolatey пакетов в JSON.
+        Exports list of installed Chocolatey packages to JSON.
     .PARAMETER OutputPath
-        Путь для сохранения JSON-файла.
+        Path to save JSON file.
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -850,7 +850,7 @@ function Export-InstalledPackages {
     Write-Step "Exporting installed packages to $OutputPath..."
 
     try {
-        # Получаем список установленных пакетов
+        # Get list of installed packages
         $packages = choco list --local-only 2>$null |
             Where-Object { $_ -match "^\s*\S+" } |
             ForEach-Object {
@@ -858,7 +858,7 @@ function Export-InstalledPackages {
                 if ($parts.Count -ge 2) {
                     @{
                         id = $parts[0]
-                        name = $parts[0]  # Используем ID как имя по умолчанию
+                        name = $parts[0]  # Use ID as name by default
                         version = $parts[1]
                     }
                 }
@@ -869,7 +869,7 @@ function Export-InstalledPackages {
             return $false
         }
 
-        # Формируем структуру JSON
+        # Build JSON structure
         $exportData = @{
             packages = $packages | ForEach-Object {
                 @{
@@ -879,7 +879,7 @@ function Export-InstalledPackages {
             }
         } | ConvertTo-Json -Depth 3
 
-        # Сохраняем файл
+        # Save file
         $exportData | Set-Content -Path $OutputPath -Force -Encoding UTF8
         Write-OK "Exported $($packages.Count) packages to $OutputPath"
         return $true
@@ -895,7 +895,7 @@ function Export-InstalledPackages {
 function Uninstall-FromConfig {
     <#
     .SYNOPSIS
-        Удаляет пакеты, указанные в конфигурационном файле.
+        Uninstalls packages specified in configuration file.
     #>
     param([string]$ConfigPath)
 
@@ -961,7 +961,7 @@ function Uninstall-FromConfig {
 function Cleanup-OldLogs {
     <#
     .SYNOPSIS
-        Удаляет старые лог-файлы (старше указанного количества дней).
+        Removes old log files (older than specified days).
     #>
     param(
         [int]$DaysToKeep = 30
@@ -987,7 +987,7 @@ function Cleanup-OldLogs {
 function Invoke-Setup {
     <#
     .SYNOPSIS
-        Главная функция запуска скрипта.
+        Main script entry point function.
     #>
     Write-Host "`n============================================" -ForegroundColor Cyan
     Write-Host "  Windows Setup Script (Chocolatey)" -ForegroundColor Cyan
