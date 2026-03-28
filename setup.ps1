@@ -743,9 +743,9 @@ function Install-FromConfig {
 function Install-FromDriversFolder {
     <#
     .SYNOPSIS
-        Устанавливает .exe файлы из папки с драйверами/приложениями.
+        Устанавливает .exe и .msi файлы из папки с драйверами/приложениями.
     .PARAMETER DriversPath
-        Путь к папке с .exe файлами.
+        Путь к папке с .exe и .msi файлами.
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -765,16 +765,18 @@ function Install-FromDriversFolder {
     }
 
     try {
-        # Ищем все .exe файлы в папке
+        # Ищем все .exe и .msi файлы в папке
         $exeFiles = Get-ChildItem -Path $DriversPath -Filter "*.exe" -File -ErrorAction SilentlyContinue
+        $msiFiles = Get-ChildItem -Path $DriversPath -Filter "*.msi" -File -ErrorAction SilentlyContinue
 
-        if ($exeFiles.Count -eq 0) {
-            Write-Skip "No .exe files found in $DriversPath"
+        if ($exeFiles.Count -eq 0 -and $msiFiles.Count -eq 0) {
+            Write-Skip "No .exe or .msi files found in $DriversPath"
             return
         }
 
-        Write-Log "    Found $($exeFiles.Count) .exe file(s)"
+        Write-Log "    Found $($exeFiles.Count) .exe file(s) and $($msiFiles.Count) .msi file(s)"
 
+        # Обработка .exe файлов
         foreach ($file in $exeFiles) {
             Write-Step "Installing: $($file.Name)..."
 
@@ -802,6 +804,24 @@ function Install-FromDriversFolder {
                     } else {
                         Write-Fail "$($file.Name) failed (exit code: $($procInfo.ExitCode))"
                     }
+                }
+            } catch {
+                Write-Fail "$($file.Name) error: $_"
+            }
+        }
+
+        # Обработка .msi файлов
+        foreach ($file in $msiFiles) {
+            Write-Step "Installing: $($file.Name)..."
+
+            try {
+                # Запускаем .msi файл через msiexec в тихом режиме
+                $procInfo = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($file.FullName)`" /quiet /norestart" -Wait -PassThru -ErrorAction SilentlyContinue
+                
+                if ($procInfo.ExitCode -eq 0 -or $procInfo.ExitCode -eq 3010) {
+                    Write-OK "$($file.Name) installed (exit code: $($procInfo.ExitCode))"
+                } else {
+                    Write-Fail "$($file.Name) failed (exit code: $($procInfo.ExitCode))"
                 }
             } catch {
                 Write-Fail "$($file.Name) error: $_"
